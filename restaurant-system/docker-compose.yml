@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  reservations:
+    build: ./reservations-service
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_USER=postgresIngenieros
+      - DB_PASSWORD=123restaurante
+      - DB_HOST=db
+      - DB_PORT=5434
+      - DB_NAME=restaurante
+    depends_on:
+      - db
+
+  users:
+    build: ./users-service
+    ports:
+      - "3001:3001"
+    environment:
+      - DB_USER=postgresIngenieros
+      - DB_PASSWORD=123restaurante
+      - DB_HOST=db
+      - DB_PORT=5434
+      - DB_NAME=restaurant_users
+      - JWT_SECRET=1753050051
+    depends_on:
+      - db
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - reservations
+      - users
+
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: postgresIngenieros
+      POSTGRES_PASSWORD: 123restaurante
+      POSTGRES_DB: postgres  # Esta línea indica que el script de init será el que cree las bases de datos
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db-init-scripts:/docker-entrypoint-initdb.d
+
+volumes:
+  postgres-data:
