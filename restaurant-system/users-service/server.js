@@ -1,55 +1,33 @@
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { Pool } = require('pg');
-require('dotenv').config();
+const bodyParser = require('body-parser');
+const sequelize = require('./db');
+const routes = require('./views/routes');
 
 const app = express();
-app.use(express.json());
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT
+app.use(bodyParser.json());
+
+// Logging middleware
+app.use((req, res, next) => {
+  console.log(`[Users Service] ${req.method} ${req.url}`);
+  next();
 });
 
-// Registro de usuarios
-app.post('/register', async (req, res) => {
-  const { nombre, email, password, role } = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10);
-  try {
-    const result = await pool.query(
-      'INSERT INTO users (nombre, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *',
-      [nombre, email, hashedPassword, role]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error(error); // Para ver el error en la consola del servidor
-    res.status(500).send(`Error en el registro: ${error.message}`);
-      }
-});
+app.use('/', routes);
 
-// Inicio de sesión
-app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    const user = result.rows[0];
-    if (user && await bcrypt.compare(password, user.password)) {
-      const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET);
-      res.status(200).json({ token });
-    } else {
-      res.status(401).send('Credenciales inválidas');
-    }
-  } catch (error) {
-    console.error(error); // Para ver el error en la consola del servidor
-    res.status(500).send(`Error en el inicio de sesión: ${error.message}`);
-      }
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Algo salió mal en el servicio de usuarios!');
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Servidor de usuarios corriendo en el puerto ${PORT}`);
-});
+
+sequelize.authenticate()
+  .then(() => {
+    console.log('Conexión a la base de datos de usuarios establecida');
+    app.listen(PORT, () => {
+      console.log(`Servidor de usuarios corriendo en el puerto ${PORT}`);
+    });
+  })
+  .catch(err => console.log('Error en la conexión a la base de datos de usuarios:', err));

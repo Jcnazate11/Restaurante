@@ -1,20 +1,18 @@
-# Usa una imagen base de Node.js
 FROM node:14
-
-# Configura el directorio de trabajo en el contenedor
 WORKDIR /app
-
-# Copia los archivos package.json y package-lock.json para instalar las dependencias
 COPY package*.json ./
-
-# Instala las dependencias del proyecto
 RUN npm install
-
-# Copia el resto de los archivos del proyecto
 COPY . .
 
-# Expone el puerto donde correrá el microservicio
+# Copia el script wait-for-it.sh al contenedor
+# Copiar el script wait-for-it.sh al contenedor
+COPY wait-for-it.sh /usr/local/bin/
+
+# Darle permisos de ejecución al script
+RUN chmod +x /usr/local/bin/wait-for-it.sh
+
+# Exponer el puerto del microservicio
 EXPOSE 3000
 
-# Comando para iniciar el microservicio
-CMD ["node", "server.js"]
+# Ejecuta wait-for-it.sh usando bash para mayor compatibilidad
+CMD ["bash", "wait-for-it.sh", "db:5432", "--", "node", "server.js"]
